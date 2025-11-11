@@ -11,7 +11,7 @@ const WorkspaceManager = global.get_workspace_manager();
 
 export default class maximizeLonleyWindow extends Extension {
     enable() {
-        activeWorkspaceChangedId = WindowManager.connect('switch-workspace', this.checkAndFullScreenWindow.bind(this));
+        activeWorkspaceChangedId = WindowManager.connect('switch-workspace', this.onWorkspaceChanged.bind(this));
 
         setLogFn((msg, error = false) => {
             let level;
@@ -43,7 +43,7 @@ export default class maximizeLonleyWindow extends Extension {
         WindowManager.disconnect(activeWorkspaceChangedId);
     }
 
-    checkAndFullScreenWindow() {
+    onWorkspaceChanged() {
 
         let current_workspace = WorkspaceManager.get_active_workspace();
 

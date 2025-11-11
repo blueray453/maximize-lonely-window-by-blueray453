@@ -1,48 +1,63 @@
+import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
-import Shell from 'gi://Shell';
 
-import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+import { setLogging, setLogFn, journal } from './utils.js'
 
-let windowTracker, activeWindowChangedId, activeWorkspaceChangedId;
+let activeWorkspaceChangedId;
 
-function init() {}
+const WindowManager = global.get_window_manager();
+const WorkspaceManager = global.get_workspace_manager();
 
-export default class maximizeLonleyWindow {
+export default class maximizeLonleyWindow extends Extension {
     enable() {
-        windowTracker = Shell.WindowTracker.get_default();
-        activeWindowChangedId = windowTracker.connect('notify::focus-app', checkAndFullScreenWindow);
-        activeWorkspaceChangedId = global.window_manager.connect('switch-workspace', checkAndFullScreenWindow);
+        activeWorkspaceChangedId = WindowManager.connect('switch-workspace', this.checkAndFullScreenWindow.bind(this));
+
+        setLogFn((msg, error = false) => {
+            let level;
+            if (error) {
+                level = GLib.LogLevelFlags.LEVEL_CRITICAL;
+            } else {
+                level = GLib.LogLevelFlags.LEVEL_MESSAGE;
+            }
+
+            GLib.log_structured(
+                'maximize-lonely-window-by-blueray453',
+                level,
+                {
+                    MESSAGE: `${msg}`,
+                    SYSLOG_IDENTIFIER: 'maximize-lonely-window-by-blueray453',
+                    CODE_FILE: GLib.filename_from_uri(import.meta.url)[0]
+                }
+            );
+        });
+
+
+        setLogging(true);
+
+        // journalctl -f -o cat SYSLOG_IDENTIFIER=maximize-lonely-window-by-blueray453
+        journal(`Enabled`);
     }
 
     disable() {
-        windowTracker.disconnect(activeWindowChangedId);
-        global.window_manager.disconnect(activeWorkspaceChangedId);
-        windowTracker = null;
+        WindowManager.disconnect(activeWorkspaceChangedId);
     }
-}
 
-function checkAndFullScreenWindow() {
-    let activeWorkspace = global.workspace_manager.get_active_workspace_index();
-    
-    let windowsOnWorkspace = global.get_window_actors().filter(w => w.meta_window.get_workspace().index() === activeWorkspace && w.meta_window.get_window_type() !== Meta.WindowType.DESKTOP);
+    checkAndFullScreenWindow() {
 
-    // Group windows by their monitor
-    let monitorsWindows = {};
-    windowsOnWorkspace.forEach(w => {
-        let monitorIndex = w.meta_window.get_monitor();
-        if (!monitorsWindows[monitorIndex]) {
-            monitorsWindows[monitorIndex] = [];
-        }
-        monitorsWindows[monitorIndex].push(w);
-    });
+        let current_workspace = WorkspaceManager.get_active_workspace();
 
-    // Iterate through each monitor's windows
-    for (let monitorIndex in monitorsWindows) {
-        if (monitorsWindows[monitorIndex].length === 1) {
-            let window = monitorsWindows[monitorIndex][0];
-            if (!window.meta_window.maximized_horizontally && !window.meta_window.maximized_vertically) {
-                window.meta_window.maximize(Meta.MaximizeFlags.BOTH);
+        let windowsOnWorkspace = global.get_window_actors().map(actor => actor.meta_window).filter(win => win.get_window_type() === Meta.WindowType.NORMAL).filter(win =>
+            win.is_on_all_workspaces() || win.get_workspace() === current_workspace
+        );
+
+        if (windowsOnWorkspace.length === 1) {
+            let window = windowsOnWorkspace[0];
+            if (!window.maximized_horizontally && !window.maximized_vertically) {
+                window.maximize(Meta.MaximizeFlags.BOTH);
             }
         }
+
+
     }
 }

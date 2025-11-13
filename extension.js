@@ -53,7 +53,8 @@ export default class maximizeLonleyWindow extends Extension {
 
         if (windowsOnWorkspace.length === 1) {
             let window = windowsOnWorkspace[0];
-            if (!window.maximized_horizontally && !window.maximized_vertically) {
+            if (window.get_maximized() !== Meta.MaximizeFlags.BOTH) {
+                journal(`Maximizing Window`);
                 window.maximize(Meta.MaximizeFlags.BOTH);
             }
         }

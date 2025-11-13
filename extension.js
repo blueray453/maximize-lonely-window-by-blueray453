@@ -44,21 +44,24 @@ export default class maximizeLonleyWindow extends Extension {
     }
 
     onWorkspaceChanged() {
+        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
 
-        let current_workspace = WorkspaceManager.get_active_workspace();
+            let current_workspace = WorkspaceManager.get_active_workspace();
 
-        let windowsOnWorkspace = global.get_window_actors().map(actor => actor.meta_window).filter(win => win.get_window_type() === Meta.WindowType.NORMAL).filter(win =>
-            win.is_on_all_workspaces() || win.get_workspace() === current_workspace
-        );
+            let windowsOnWorkspace = global.get_window_actors().map(actor => actor.meta_window).filter(win => win.get_window_type() === Meta.WindowType.NORMAL).filter(win =>
+                win.is_on_all_workspaces() || win.get_workspace() === current_workspace
+            );
 
-        if (windowsOnWorkspace.length === 1) {
-            let window = windowsOnWorkspace[0];
-            if (window.get_maximized() !== Meta.MaximizeFlags.BOTH) {
-                journal(`Maximizing Window`);
-                window.maximize(Meta.MaximizeFlags.BOTH);
+            if (windowsOnWorkspace.length === 1) {
+                let window = windowsOnWorkspace[0];
+                if (window.get_maximized() !== Meta.MaximizeFlags.BOTH) {
+                    journal(`Maximizing Window`);
+                    window.maximize(Meta.MaximizeFlags.BOTH);
+                }
             }
-        }
 
+            return GLib.SOURCE_REMOVE; // important to avoid repeated execution
+        });
 
     }
 }

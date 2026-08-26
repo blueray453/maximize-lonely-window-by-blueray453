@@ -2,7 +2,13 @@ import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
-import { setLogging, setLogFn, journal } from './utils.js'
+
+import {
+    initLogging,
+    createLogger,
+} from './logger.js';
+
+const journal = createLogger(import.meta.url);
 
 let activeWorkspaceChangedId;
 
@@ -11,32 +17,10 @@ const WorkspaceManager = global.get_workspace_manager();
 
 export default class maximizeLonleyWindow extends Extension {
     enable() {
-        activeWorkspaceChangedId = WindowManager.connect('switch-workspace', this.onWorkspaceChanged.bind(this));
-
-        setLogFn((msg, error = false) => {
-            let level;
-            if (error) {
-                level = GLib.LogLevelFlags.LEVEL_CRITICAL;
-            } else {
-                level = GLib.LogLevelFlags.LEVEL_MESSAGE;
-            }
-
-            GLib.log_structured(
-                'maximize-lonely-window-by-blueray453',
-                level,
-                {
-                    MESSAGE: `${msg}`,
-                    SYSLOG_IDENTIFIER: 'maximize-lonely-window-by-blueray453',
-                    CODE_FILE: GLib.filename_from_uri(import.meta.url)[0]
-                }
-            );
-        });
-
-
-        setLogging(true);
-
-        // journalctl -f -o cat SYSLOG_IDENTIFIER=maximize-lonely-window-by-blueray453
+        initLogging(this.uuid, 'both', false);
         journal(`Enabled`);
+
+        activeWorkspaceChangedId = WindowManager.connect('switch-workspace', this.onWorkspaceChanged.bind(this));
     }
 
     disable() {
